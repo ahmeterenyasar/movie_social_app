@@ -1,0 +1,15 @@
+import 'dart:io';
+
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:equatable/equatable.dart';
+
+abstract class UserState extends Equatable {
+  const UserState();
+
+  @override
+  List<Object?> get props => [];
+}
+
+class UserInital extends UserState {}
+class UserLoading extends UserState {}
+class UserLoaded extends UserState {}

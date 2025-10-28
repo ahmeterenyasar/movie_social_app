@@ -21,10 +21,9 @@ class FirebaseAuthService {
       if (userCredential.user == null) {
         throw Exception('Kullanıcı oluşturulamadı');
       }
-
       return userCredential.user!.uid;
     } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      throw (_handleAuthException(e));
     } catch (e) {
       throw Exception('Kayıt sırasında bir hata oluştu: $e');
     }
@@ -46,7 +45,7 @@ class FirebaseAuthService {
 
       return userCredential.user!.uid;
     } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      throw (_handleAuthException(e));
     } catch (e) {
       throw Exception('Giriş sırasında bir hata oluştu: $e');
     }
@@ -64,7 +63,7 @@ class FirebaseAuthService {
     try {
       await _auth.sendPasswordResetEmail(email: email);
     } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      throw (_handleAuthException(e));
     } catch (e) {
       throw Exception('Şifre sıfırlama e-postası gönderilemedi: $e');
     }
@@ -74,7 +73,7 @@ class FirebaseAuthService {
     try {
       await _auth.currentUser?.delete();
     } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      throw (_handleAuthException(e));
     } catch (e) {
       throw Exception('Hesap silinirken bir hata oluştu: $e');
     }

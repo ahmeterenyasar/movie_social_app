@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'data/repositories/auth_repository.dart';
+import 'data/repositories/movie_repository.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Test App',
+      title: 'Movie Test',
       home: const TestScreen(),
     );
   }
@@ -29,38 +29,32 @@ class TestScreen extends StatefulWidget {
 }
 
 class _TestScreenState extends State<TestScreen> {
-  final AuthRepository _authRepo = AuthRepository();
-  String _message = 'Henüz test yapılmadı';
+  final MovieRepository _movieRepo = MovieRepository();
+  String _message = 'Test yapmak için butona bas';
   bool _loading = false;
 
-  Future<void> _testRegister() async {
-    setState(() => _loading = true);
+  Future<void> _testMovies() async {
+    setState(() {
+      _loading = true;
+      _message = 'Filmler yükleniyor...';
+    });
 
     try {
-      print('1. Kayıt başlatılıyor...');
-      
-      final user = await _authRepo.register(
-        firstName: 'Ahmet',
-        lastName: 'Akyüz',
-        nickname: 'test',
-        email: 'test@example.com',
-        password: '123456',
-      );
-
-      print('2. Kayıt başarılı: ${user.id}');
+      final movies = await _movieRepo.getPopularMovies();
 
       setState(() {
-        _message = 'BAŞARILI!\nKullanıcı: ${user.fullName}\nNickname: ${user.nickname}\nEmail: ${user.email}';
         _loading = false;
+        _message = '${movies.length} film yüklendi\n\n'
+            'filmler:\n'
+            '1. ${movies[0].title}\n'
+            '2. ${movies[1].title}\n'
+            '3. ${movies[2].title}\n'
+            '20. ${movies[19].title}';
       });
-    } catch (e, stackTrace) {
-      print('HATA DETAYI:');
-      print('Hata: $e');
-      print('StackTrace: $stackTrace');
-      
+    } catch (e) {
       setState(() {
-        _message = 'HATA:\n\nKonsola bak!!!!';
         _loading = false;
+        _message = 'HATA!!!!!:\n$e';
       });
     }
   }
@@ -68,7 +62,7 @@ class _TestScreenState extends State<TestScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Firebase Test')),
+      appBar: AppBar(title: const Text('TMDB API Test')),
       body: Center(
         child: _loading
             ? const CircularProgressIndicator()
@@ -84,14 +78,14 @@ class _TestScreenState extends State<TestScreen> {
                     ),
                     const SizedBox(height: 40),
                     ElevatedButton(
-                      onPressed: _testRegister,
+                      onPressed: _testMovies,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 40,
                           vertical: 20,
                         ),
                       ),
-                      child: const Text('KAYIT TESTİ YAP'),
+                      child: const Text('FİLM YÜKLE'),
                     ),
                   ],
                 ),

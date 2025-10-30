@@ -111,7 +111,7 @@ class MovieRepository {
   }
 
   /*
-  retriteves favorite movies by paging them
+  retrieves favorite movies by paging them
   */
   Future<List<MovieModel>> getFavoriteMoviesPaginated({
     required List<int> allFavoriteIds,

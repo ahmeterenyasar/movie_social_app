@@ -174,9 +174,7 @@ class MovieCubit extends Cubit<MovieState> {
       final movies = await _movieRepository.searchMovies(query, page: page);
 
       final currentState = state;
-      if (currentState is MovieSearchLoaded && 
-          currentState.query == query && 
-          page > 1) {
+      if (currentState is MovieSearchLoaded && currentState.query == query && page > 1) {
         final updatedMovies = [...currentState.movies, ...movies];
         emit(MovieSearchLoaded(
           movies: updatedMovies,

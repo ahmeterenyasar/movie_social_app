@@ -127,16 +127,6 @@ class _UserSearchScreenState
     );
   }
 
-  void _showErrorMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -248,12 +238,7 @@ class _UserSearchScreenState
   }
 
   Widget _buildSearchResultsView() {
-    return BlocConsumer<UserCubit, UserState>(
-      listener: (context, state) {
-        if (state is UserError) {
-          _showErrorMessage(state.message);
-        }
-      },
+    return BlocBuilder<UserCubit, UserState>(
       builder: (context, state) {
         if (state is UserSearchLoading) {
           return const LoadingIndicator(

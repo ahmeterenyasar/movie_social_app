@@ -1,7 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/user_model.dart';
+
 import '../models/friendship_model.dart';
 import '../models/movie_favorite_model.dart';
+import '../models/user_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -88,6 +89,39 @@ class FirestoreService {
   // ARKADAŞLIK
   Future<void> sendFriendRequest(String senderId, String receiverId) async {
     try {
+      // Check if already friends
+      final sender = await getUser(senderId);
+      if (sender != null &&
+          sender.friendIds.contains(receiverId)) {
+        throw Exception('Bu kullanıcı zaten arkadaşınız');
+      }
+
+      // Check if request already exists (either direction)
+      final existingRequest = await _friendshipsCollection
+          .where('senderId', isEqualTo: senderId)
+          .where('receiverId', isEqualTo: receiverId)
+          .where('status', isEqualTo: 'pending')
+          .get();
+
+      if (existingRequest.docs.isNotEmpty) {
+        throw Exception(
+          'Bu kullanıcıya zaten arkadaşlık isteği gönderilmiş',
+        );
+      }
+
+      // Check reverse direction (if they sent to us)
+      final reverseRequest = await _friendshipsCollection
+          .where('senderId', isEqualTo: receiverId)
+          .where('receiverId', isEqualTo: senderId)
+          .where('status', isEqualTo: 'pending')
+          .get();
+
+      if (reverseRequest.docs.isNotEmpty) {
+        throw Exception(
+          'Bu kullanıcı size zaten arkadaşlık isteği göndermiş',
+        );
+      }
+
       final friendship = FriendshipModel(
         id: '',
         senderId: senderId,
@@ -98,7 +132,7 @@ class FirestoreService {
 
       await _friendshipsCollection.add(friendship.toMap());
     } catch (e) {
-      throw Exception('Arkadaşlık isteği gönderilemedi: $e');
+      rethrow;
     }
   }
 
@@ -144,6 +178,23 @@ class FirestoreService {
           .toList();
     } catch (e) {
       throw Exception('Arkadaşlık istekleri alınamadı: $e');
+    }
+  }
+
+  Future<List<FriendshipModel>> getSentFriendRequests(
+    String userId,
+  ) async {
+    try {
+      final querySnapshot = await _friendshipsCollection
+          .where('senderId', isEqualTo: userId)
+          .where('status', isEqualTo: 'pending')
+          .get();
+
+      return querySnapshot.docs
+          .map((doc) => FriendshipModel.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      throw Exception('Gönderilen istekler alınamadı: $e');
     }
   }
 

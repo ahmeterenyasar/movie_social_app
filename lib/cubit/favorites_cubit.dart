@@ -1,5 +1,6 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../data/models/movie_model.dart';
 import '../data/repositories/movie_repository.dart';
 import '../data/repositories/user_repository.dart';
@@ -21,16 +22,24 @@ class FavoritesLoaded extends FavoritesState {
   final List<int> favoriteMovieIds;
   final int currentPage;
   final bool hasMorePages;
+  final bool isLoadingMore;
 
   const FavoritesLoaded({
     required this.movies,
     required this.favoriteMovieIds,
     this.currentPage = 1,
     this.hasMorePages = true,
+    this.isLoadingMore = false,
   });
 
   @override
-  List<Object?> get props => [movies, favoriteMovieIds, currentPage, hasMorePages];
+  List<Object?> get props => [
+    movies,
+    favoriteMovieIds,
+    currentPage,
+    hasMorePages,
+    isLoadingMore,
+  ];
 
   bool isFavorite(int movieId) => favoriteMovieIds.contains(movieId);
 
@@ -39,12 +48,14 @@ class FavoritesLoaded extends FavoritesState {
     List<int>? favoriteMovieIds,
     int? currentPage,
     bool? hasMorePages,
+    bool? isLoadingMore,
   }) {
     return FavoritesLoaded(
       movies: movies ?? this.movies,
       favoriteMovieIds: favoriteMovieIds ?? this.favoriteMovieIds,
       currentPage: currentPage ?? this.currentPage,
       hasMorePages: hasMorePages ?? this.hasMorePages,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
     );
   }
 }
@@ -108,18 +119,29 @@ class FavoritesCubit extends Cubit<FavoritesState> {
       final currentState = state;
       if (currentState is FavoritesLoaded && page > 1) {
         final updatedMovies = [...currentState.movies, ...movies];
+        
+        /* Sonsuz pagination problemi fixed.   */
+        final hasMorePages =
+            updatedMovies.length < allFavoriteIds.length;
+        
         emit(FavoritesLoaded(
           movies: updatedMovies,
           favoriteMovieIds: allFavoriteIds,
           currentPage: page,
-          hasMorePages: movies.length == 20,
+            hasMorePages: hasMorePages,
+            isLoadingMore: false,
         ));
       } else {
+        /* İlk sayfa için */
+        final hasMorePages =
+            allFavoriteIds.length > movies.length;
+        
         emit(FavoritesLoaded(
           movies: movies,
           favoriteMovieIds: allFavoriteIds,
           currentPage: page,
-          hasMorePages: movies.length == 20,
+            hasMorePages: hasMorePages,
+            isLoadingMore: false,
         ));
       }
     } catch (e) {
@@ -129,7 +151,12 @@ class FavoritesCubit extends Cubit<FavoritesState> {
 
   Future<void> loadMoreFavorites(String userId) async {
     final currentState = state;
-    if (currentState is FavoritesLoaded && currentState.hasMorePages) {
+    if (currentState is FavoritesLoaded &&
+        currentState.hasMorePages &&
+        !currentState.isLoadingMore) {
+      // Set loading state
+      emit(currentState.copyWith(isLoadingMore: true));
+      
       await loadFavorites(userId, page: currentState.currentPage + 1);
     }
   }

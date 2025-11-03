@@ -21,8 +21,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // temporary
-    // mutli provider section will be changed. every cubit will be transferred to corresponding section
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (context) => AuthCubit()),

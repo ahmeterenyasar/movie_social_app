@@ -1,5 +1,5 @@
-import '../models/user_model.dart';
 import '../models/friendship_model.dart';
+import '../models/user_model.dart';
 import '../services/firestore_service.dart';
 
 class UserRepository {
@@ -102,6 +102,18 @@ class UserRepository {
   Future<List<FriendshipModel>> getPendingFriendRequests(String userId) async {
     try {
       return await _firestoreService.getPendingFriendRequests(userId);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<List<FriendshipModel>> getSentFriendRequests(
+    String userId,
+  ) async {
+    try {
+      return await _firestoreService.getSentFriendRequests(
+        userId,
+      );
     } catch (e) {
       rethrow;
     }

@@ -1,7 +1,8 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import '../data/models/user_model.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../data/models/friendship_model.dart';
+import '../data/models/user_model.dart';
 import '../data/repositories/user_repository.dart';
 
 // States
@@ -20,25 +21,36 @@ class UserLoaded extends UserState {
   final UserModel user;
   final List<UserModel> friends;
   final List<FriendshipModel> pendingRequests;
+  final Map<String, UserModel> pendingRequestSenders;
 
   const UserLoaded({
     required this.user,
     this.friends = const [],
     this.pendingRequests = const [],
+    this.pendingRequestSenders = const {},
   });
 
   @override
-  List<Object?> get props => [user, friends, pendingRequests];
+  List<Object?> get props => [
+    user,
+    friends,
+    pendingRequests,
+    pendingRequestSenders,
+  ];
 
   UserLoaded copyWith({
     UserModel? user,
     List<UserModel>? friends,
     List<FriendshipModel>? pendingRequests,
+    Map<String, UserModel>? pendingRequestSenders,
   }) {
     return UserLoaded(
       user: user ?? this.user,
       friends: friends ?? this.friends,
       pendingRequests: pendingRequests ?? this.pendingRequests,
+      pendingRequestSenders:
+          pendingRequestSenders ??
+          this.pendingRequestSenders,
     );
   }
 }
@@ -48,14 +60,33 @@ class UserSearchLoading extends UserState {}
 class UserSearchLoaded extends UserState {
   final List<UserModel> users;
   final String query;
+  final List<String> friendIds;
+  final List<String> pendingRequestSenderIds;
+  final List<String> sentRequestReceiverIds;
 
   const UserSearchLoaded({
     required this.users,
     required this.query,
+    this.friendIds = const [],
+    this.pendingRequestSenderIds = const [],
+    this.sentRequestReceiverIds = const [],
   });
 
   @override
-  List<Object?> get props => [users, query];
+  List<Object?> get props => [
+    users,
+    query,
+    friendIds,
+    pendingRequestSenderIds,
+    sentRequestReceiverIds,
+  ];
+
+  bool isFriend(String userId) =>
+      friendIds.contains(userId);
+  bool hasPendingRequestFrom(String userId) =>
+      pendingRequestSenderIds.contains(userId);
+  bool hasSentRequestTo(String userId) =>
+      sentRequestReceiverIds.contains(userId);
 }
 
 class UserSearchError extends UserState {
@@ -131,9 +162,31 @@ class UserCubit extends Cubit<UserState> {
         _userRepository.getPendingFriendRequests(userId),
       ]);
 
+      final friends = results[0] as List<UserModel>;
+      final pendingRequests =
+          results[1] as List<FriendshipModel>;
+
+      // Load sender user info for each pending request
+      final senderUsers = <String, UserModel>{};
+      for (final request in pendingRequests) {
+        try {
+          final senderUser = await _userRepository.getUser(
+            request.senderId,
+          );
+          if (senderUser != null) {
+            senderUsers[request.senderId] = senderUser;
+          }
+        } catch (e) {
+          print(
+            'Sender user yüklenemedi: ${request.senderId}',
+          );
+        }
+      }
+
       emit(currentState.copyWith(
-        friends: results[0] as List<UserModel>,
-        pendingRequests: results[1] as List<FriendshipModel>,
+          friends: friends,
+          pendingRequests: pendingRequests,
+          pendingRequestSenders: senderUsers,
       ));
     } catch (e) {
       print('Kullanıcı ilişkileri yüklenemedi: $e');
@@ -173,16 +226,41 @@ class UserCubit extends Cubit<UserState> {
     try {
       final requests = await _userRepository.getPendingFriendRequests(userId);
       
+      // Load sender user info for each request
+      final senderUsers = <String, UserModel>{};
+      for (final request in requests) {
+        try {
+          final senderUser = await _userRepository.getUser(
+            request.senderId,
+          );
+          if (senderUser != null) {
+            senderUsers[request.senderId] = senderUser;
+          }
+        } catch (e) {
+          print(
+            'Sender user yüklenemedi: ${request.senderId}',
+          );
+        }
+      }
+      
       final currentState = state;
       if (currentState is UserLoaded) {
-        emit(currentState.copyWith(pendingRequests: requests));
+        emit(
+          currentState.copyWith(
+            pendingRequests: requests,
+            pendingRequestSenders: senderUsers,
+          ),
+        );
       }
     } catch (e) {
       print('Bekleyen istekler yüklenemedi: $e');
     }
   }
 
-  Future<void> searchUsers(String query) async {
+  Future<void> searchUsers(
+    String query,
+    String currentUserId,
+  ) async {
     if (query.trim().isEmpty) {
       emit(UserInitial());
       return;
@@ -192,7 +270,36 @@ class UserCubit extends Cubit<UserState> {
 
     try {
       final users = await _userRepository.searchUsers(query);
-      emit(UserSearchLoaded(users: users, query: query));
+      
+      // Get current user's friendship info
+      final currentUser = await _userRepository.getUser(
+        currentUserId,
+      );
+      final friendIds = currentUser?.friendIds ?? [];
+
+      // Get pending requests (received)
+      final pendingRequests = await _userRepository
+          .getPendingFriendRequests(currentUserId);
+      final pendingRequestSenderIds = pendingRequests
+          .map((req) => req.senderId)
+          .toList();
+
+      // Get sent requests (sent by current user)
+      final sentRequests = await _userRepository
+          .getSentFriendRequests(currentUserId);
+      final sentRequestReceiverIds = sentRequests
+          .map((req) => req.receiverId)
+          .toList();
+
+      emit(
+        UserSearchLoaded(
+          users: users,
+          query: query,
+          friendIds: friendIds,
+          pendingRequestSenderIds: pendingRequestSenderIds,
+          sentRequestReceiverIds: sentRequestReceiverIds,
+        ),
+      );
     } catch (e) {
       emit(UserSearchError(e.toString()));
     }

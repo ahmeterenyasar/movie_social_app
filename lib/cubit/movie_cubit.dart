@@ -1,5 +1,6 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../data/models/movie_model.dart';
 import '../data/repositories/movie_repository.dart';
 
@@ -20,28 +21,38 @@ class MovieLoaded extends MovieState {
   final MovieCategory category;
   final int currentPage;
   final bool hasMorePages;
+  final bool isLoadingMore;
 
   const MovieLoaded({
     required this.movies,
     required this.category,
     this.currentPage = 1,
     this.hasMorePages = true,
+    this.isLoadingMore = false,
   });
 
   @override
-  List<Object?> get props => [movies, category, currentPage, hasMorePages];
+  List<Object?> get props => [
+    movies,
+    category,
+    currentPage,
+    hasMorePages,
+    isLoadingMore,
+  ];
 
   MovieLoaded copyWith({
     List<MovieModel>? movies,
     MovieCategory? category,
     int? currentPage,
     bool? hasMorePages,
+    bool? isLoadingMore,
   }) {
     return MovieLoaded(
       movies: movies ?? this.movies,
       category: category ?? this.category,
       currentPage: currentPage ?? this.currentPage,
       hasMorePages: hasMorePages ?? this.hasMorePages,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
     );
   }
 }
@@ -136,6 +147,7 @@ class MovieCubit extends Cubit<MovieState> {
           category: category,
           currentPage: page,
           hasMorePages: movies.isNotEmpty,
+            isLoadingMore: false,
         ));
       } else {
         emit(MovieLoaded(
@@ -143,6 +155,7 @@ class MovieCubit extends Cubit<MovieState> {
           category: category,
           currentPage: page,
           hasMorePages: movies.isNotEmpty,
+            isLoadingMore: false,
         ));
       }
     } catch (e) {
@@ -152,7 +165,12 @@ class MovieCubit extends Cubit<MovieState> {
 
   Future<void> loadMoreMovies() async {
     final currentState = state;
-    if (currentState is MovieLoaded && currentState.hasMorePages) {
+    if (currentState is MovieLoaded &&
+        currentState.hasMorePages &&
+        !currentState.isLoadingMore) {
+      // Set loading state
+      emit(currentState.copyWith(isLoadingMore: true));
+      
       await loadMovies(
         currentState.category,
         page: currentState.currentPage + 1,
